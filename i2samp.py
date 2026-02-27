@@ -9,8 +9,9 @@ except ImportError:
 shell = Shell()
 
 BLACKLIST = "/etc/modprobe.d/raspi-blacklist.conf"
+MODULES = "/etc/modules"
 PRODUCT_NAME = "I2S Amplifier"
-OVERLAY = "googlevoicehat-soundcard"
+OVERLAY = "max98357a"
 
 def driver_loaded(driver_name):
     return shell.run_command(f"lsmod | grep -q '{driver_name}'", suppress_message=True)
@@ -39,6 +40,11 @@ def main():
 
     print(f"\nAdding Device Tree Entry to {config}")
 
+    if shell.pattern_search(config, "^dtparam=audio=on"):
+        print("Disabling onboard audio (dtparam=audio=on)")
+        shell.pattern_replace(config, "^dtparam=audio=on", "#dtparam=audio=on")
+        reboot = True
+
     if shell.pattern_search(config, f"^dtoverlay={OVERLAY}$"):
         print("dtoverlay already active")
     else:
@@ -46,10 +52,18 @@ def main():
         reboot = True
 
     if os.path.exists(BLACKLIST):
-        print("\nCommenting out Blacklist entry in", BLACKLIST)
+        print("\nCommenting out Blacklist entries in", BLACKLIST)
+        shell.pattern_replace(BLACKLIST, "^blacklist[[:space:]]*i2c-bcm2708.*", "#blacklist i2c-bcm2708")
+        shell.pattern_replace(BLACKLIST, "^blacklist[[:space:]]*snd-soc-pcm512x.*", "#blacklist snd-soc-pcm512x")
+        shell.pattern_replace(BLACKLIST, "^blacklist[[:space:]]*snd-soc-wm8804.*", "#blacklist snd-soc-wm8804")
         shell.pattern_replace(BLACKLIST, "^blacklist[[:space:]]*snd_soc_max98357a.*", "#blacklist snd_soc_max98357a")
         shell.pattern_replace(BLACKLIST, "^blacklist[[:space:]]*snd_soc_max98357a_i2c.*", "#blacklist snd_soc_max98357a_i2c")
-        shell.pattern_replace(BLACKLIST, "^blacklist[[:space:]]*snd_soc_max98357a.*", "#blacklist snd_soc_max98357a")
+
+    if os.path.exists(MODULES):
+        if shell.pattern_search(MODULES, "^snd_bcm2835"):
+            print("\nDisabling onboard sound module in", MODULES)
+            shell.pattern_replace(MODULES, "^snd_bcm2835", "#snd_bcm2835")
+            reboot = True
 
     print("Configuring sound output")
     if os.path.exists("/etc/asound.conf"):
@@ -126,7 +140,7 @@ WantedBy=multi-user.target""", append=False)
             print("Testing...")
             shell.run_command("speaker-test -l5 -c2 -t wav")
     print("\n" + colored.green("All done!"))
-    print("\nEnjoy your new $productname!")
+    print(f"\nEnjoy your new {PRODUCT_NAME}!")
     if reboot:
         shell.prompt_reboot()
 
