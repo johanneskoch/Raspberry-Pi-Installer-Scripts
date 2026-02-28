@@ -73,7 +73,7 @@ def main():
     shell.write_text_file("~/asound.conf",
 """
 pcm.speakerbonnet {
-   type hw card 0
+   type hw card 1
 }
 
 pcm.dmixer {
@@ -91,18 +91,18 @@ pcm.dmixer {
 }
 
 ctl.dmixer {
-    type hw card 0
+    type hw card 1
 }
 
 pcm.softvol {
     type softvol
     slave.pcm "dmixer"
     control.name "PCM"
-    control.card 0
+    control.card 1
 }
 
 ctl.softvol {
-    type hw card 0
+    type hw card 1
 }
 
 pcm.!default {
